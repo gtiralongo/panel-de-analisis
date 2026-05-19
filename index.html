@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Screener — BCBA (978 tickers)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0e17;color:#e0e6ed;min-height:100vh}
+.container{max-width:1400px;margin:0 auto;padding:20px}
+header{background:linear-gradient(135deg,#111827 0%,#1a2332 100%);border-bottom:1px solid #1e3a5f;padding:20px 0;margin-bottom:24px}
+header .container{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+header h1{font-size:24px;font-weight:700;background:linear-gradient(90deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header .subtitle{color:#7b8ba3;font-size:13px;margin-top:2px}
+.header-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{padding:8px 18px;border:1px solid #2a3a5c;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;background:#1a2332;color:#c8d0dc}
+.btn:hover{background:#243452}
+.btn-primary{background:#2563eb;border-color:#2563eb;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-yellow{background:#d97706;border-color:#d97706;color:#fff}
+.btn-yellow:hover{background:#b45309}
+.filters{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:16px 0 20px;padding:16px 20px;background:#111827;border:1px solid #1e3a5f;border-radius:12px}
+.filter-group{display:flex;align-items:center;gap:8px}
+.filter-group label{font-size:11px;color:#7b8ba3;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.filter-group select{padding:6px 10px;border:1px solid #2a3a5c;border-radius:6px;background:#0f172a;color:#e0e6ed;font-size:13px;outline:none}
+.filter-group select:focus{border-color:#3b82f6}
+.checkbox-group{display:flex;gap:12px;flex-wrap:wrap}
+.checkbox-group label{display:flex;align-items:center;gap:5px;font-size:13px;color:#c8d0dc;cursor:pointer}
+.checkbox-group input[type=checkbox]{accent-color:#2563eb;width:15px;height:15px;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#111827;border:1px solid #1e3a5f;border-radius:10px;padding:14px 18px}
+.stat-card .label{font-size:11px;color:#7b8ba3;text-transform:uppercase;letter-spacing:.5px}
+.stat-card .value{font-size:22px;font-weight:700;margin-top:4px}
+.stat-card .value.green{color:#34d399}
+.stat-card .value.yellow{color:#fbbf24}
+.stat-card .value.blue{color:#60a5fa}
+.stat-card .value.violet{color:#a78bfa}
+.table-wrap{background:#111827;border:1px solid #1e3a5f;border-radius:12px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+thead{background:#0f172a}
+th{padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#7b8ba3;border-bottom:1px solid #1e3a5f;cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:#93bbfc}
+td{padding:10px 14px;font-size:13px;border-bottom:1px solid #0f172a;vertical-align:middle}
+tr:hover td{background:#1a2332}
+.score-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.score-fill{height:6px;border-radius:3px;min-width:30px;flex-shrink:0}
+.score-fill.high{background:#34d399}
+.score-fill.med{background:#fbbf24}
+.score-fill.low{background:#f87171}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.tag.buy{background:#065f4626;color:#34d399;border:1px solid #34d39933}
+.tag.watch{background:#92400e26;color:#fbbf24;border:1px solid #fbbf2433}
+.tag.pass{background:#7f1d1d26;color:#f87171;border:1px solid #f8717133}
+.price-up{color:#34d399}
+.price-down{color:#f87171}
+.signal-chip{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;margin:1px;font-weight:500;white-space:nowrap}
+.signal-chip.bull{background:#065f4626;color:#6ee7b7;border:1px solid #34d39933}
+.signal-chip.bear{background:#7f1d1d26;color:#fca5a5;border:1px solid #f8717133}
+.loading{text-align:center;padding:60px 20px;color:#7b8ba3}
+.spinner{width:36px;height:36px;border:3px solid #1e3a5f;border-top-color:#60a5fa;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-bar-wrap{background:#1e3a5f;border-radius:4px;height:6px;max-width:400px;margin:12px auto;overflow:hidden}
+.progress-bar-fill{background:#60a5fa;height:100%;width:0%;transition:width .3s;border-radius:4px}
+.empty-state{text-align:center;padding:60px 20px;color:#7b8ba3}
+.empty-state .big-icon{font-size:48px;margin-bottom:12px;opacity:.3}
+.empty-state p{margin:4px 0}
+.btn-chart{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;border:1px solid #2a3a5c;background:#0f172a;color:#7b8ba3;text-decoration:none;font-size:13px;transition:all .15s}
+.btn-chart:hover{background:#1e3a5f;color:#60a5fa;border-color:#3b82f6}
+.btn-detail{background:0;border:0;color:#7b8ba3;cursor:pointer;font-size:15px;padding:2px 6px;border-radius:4px;transition:all .15s}
+.btn-detail:hover{background:#1e3a5f;color:#60a5fa}
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:#111827;border:1px solid #1e3a5f;border-radius:14px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:24px;position:relative}
+.modal h2{font-size:18px;margin-bottom:4px}
+.modal .sub{color:#7b8ba3;font-size:13px;margin-bottom:16px}
+.modal .signal-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #0f172a;font-size:13px}
+.modal .signal-row .s-label{color:#a0b0c0}
+.modal .signal-row .s-val{font-weight:600}
+.modal .signal-row .s-val.bull{color:#34d399}
+.modal .signal-row .s-val.bear{color:#f87171}
+.modal .veredicto{background:#0f172a;border-radius:10px;padding:14px 16px;margin-top:16px;font-size:13px;line-height:1.5}
+.modal .veredicto strong{color:#60a5fa}
+.modal .veredicto .hold{display:block;margin-top:8px;color:#fbbf24}
+.modal .close-btn{position:absolute;top:12px;right:16px;background:0;border:0;color:#7b8ba3;font-size:22px;cursor:pointer}
+.modal .close-btn:hover{color:#e0e6ed}
+.modo-group{display:flex;gap:2px;background:#0f172a;border-radius:6px;padding:2px;border:1px solid #1e3a5f}
+.modo-btn{padding:5px 14px;border:0;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;background:transparent;color:#7b8ba3;transition:all .15s}
+.modo-btn.active{background:#2563eb;color:#fff}
+.modo-btn:hover:not(.active){color:#c8d0dc}
+@media(max-width:768px){
+header .container{flex-direction:column;align-items:flex-start}
+.filters{flex-direction:column;align-items:stretch}
+.stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div>
+      <h1>Asset Screener</h1>
+      <div class="subtitle">Analisis masivo BCBA — 978 tickers via TradingView</div>
+    </div>
+    <div class="header-controls">
+      <span id="statusText" style="font-size:12px;color:#7b8ba3;"></span>
+      <button class="btn btn-primary" id="btnScan" onclick="startScan()">Escanear BCBA completo</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="filters">
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="chkAcciones" checked onchange="aplicarFiltros()"> Acciones (stock)</label>
+      <label><input type="checkbox" id="chkCedears" checked onchange="aplicarFiltros()"> Cedears (DR)</label>
+    </div>
+    <div class="filter-group">
+      <label>Score min</label>
+      <select id="selMinScore" onchange="aplicarFiltros()">
+        <option value="40">40</option>
+        <option value="50" selected>50</option>
+        <option value="60">60</option>
+        <option value="70">70</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Modo</label>
+      <div class="modo-group">
+        <button class="modo-btn active" id="modoCompra" onclick="setModo('compra')">Compra</button>
+        <button class="modo-btn" id="modoVenta" onclick="setModo('venta')">Venta</button>
+        <button class="modo-btn" id="modoTodos" onclick="setModo('todos')">Todos</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Plazo</label>
+      <div class="modo-group">
+        <button class="modo-btn" id="plazoShort" onclick="setPlazo('short')">Corto</button>
+        <button class="modo-btn active" id="plazoMedium" onclick="setPlazo('medium')">Medio</button>
+        <button class="modo-btn" id="plazoLong" onclick="setPlazo('long')">Largo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="statsRow" style="display:none;">
+    <div class="stat-card"><div class="label">Total BCBA</div><div class="value violet" id="statTotal">-</div></div>
+    <div class="stat-card"><div class="label">Analizados</div><div class="value blue" id="statAnalizados">-</div></div>
+    <div class="stat-card"><div class="label">Sugerencias</div><div class="value green" id="statSugerencias">-</div></div>
+    <div class="stat-card"><div class="label">Score Promedio</div><div class="value yellow" id="statScoreProm">-</div></div>
+  </div>
+
+  <div class="table-wrap" id="tableWrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="ordenar('rank')">#</th>
+          <th onclick="ordenar('simbolo')">Simbolo</th>
+          <th>TV</th>
+          <th onclick="ordenar('nombre')">Nombre</th>
+          <th onclick="ordenar('precio')">Precio</th>
+          <th onclick="ordenar('volume')">Volumen</th>
+          <th onclick="ordenar('score')">Score</th>
+          <th onclick="ordenar('tendencia')">Tendencia</th>
+          <th>Senales</th>
+          <th onclick="ordenar('tipo')">Tipo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="11">
+          <div class="empty-state">
+            <div class="big-icon">📊</div>
+            <p>Presiona <strong>"Escanear BCBA completo"</strong></p>
+            <p style="font-size:12px;margin-top:8px;color:#5a7a9a;">Escanea los 978 tickers de BYMA via TradingView — alterna entre Compra / Venta / Todos</p>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+    <div id="pagination" style="display:none;padding:14px 18px;border-top:1px solid #1e3a5f;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span id="pageInfo" style="font-size:13px;color:#7b8ba3;"></span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-sm" id="pagePrev" onclick="irPagina(pagActual-1)" disabled style="display:none;">Anterior</button>
+        <span id="pageNumbers" style="display:flex;gap:4px;"></span>
+        <button class="btn btn-sm" id="pageNext" onclick="irPagina(pagActual+1)" style="display:none;">Siguiente</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:12px;text-align:center;font-size:12px;color:#5a7a9a;" id="totalInfo"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal">
+    <button class="close-btn" onclick="cerrarModal()">✕</button>
+    <h2 id="modalTitle">-</h2>
+    <div class="sub" id="modalSub">-</div>
+    <div id="modalSignals"></div>
+    <div class="veredicto" id="modalVeredicto"></div>
+  </div>
+</div>
+
+<script>
+const TV_COLS = ['name','close','type','subtype','description','RSI','MACD.macd','MACD.signal','SMA20','SMA50','BB.lower','BB.upper','ATR','Recommend.All','volume','change'];
+
+const PERFILES = {
+  short:{base:50,rsi:{w:12,bajo:35,alto:65},macd:12,pMA20:8,pMA50:2,sma:5,bb:10,atr:8,tv:3},
+  medium:{base:50,rsi:{w:10,bajo:30,alto:70},macd:10,pMA20:5,pMA50:5,sma:10,bb:8,atr:5,tv:7},
+  long:{base:50,rsi:{w:5,bajo:25,alto:75},macd:12,pMA20:5,pMA50:8,sma:12,bb:4,atr:3,tv:10}
+};
+
+let resultados = [];
+let resultadosFull = [];
+let resultadosFiltrados = [];
+let sortField = 'score';
+let sortDir = -1;
+const PAGE_SIZE = 25;
+let pagActual = 1;
+let modo = 'compra';
+let plazo = 'medium';
+
+// =================== FETCH ===================
+async function fetchTVAll(){
+  const resp = await fetch('https://scanner.tradingview.com/argentina/scan', {
+    method: 'POST',
+    headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({
+      symbols: {query: {types: []}, tickers: []},
+      columns: TV_COLS
+    })
+  });
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  const json = await resp.json();
+  if(!json.data) throw new Error('Sin datos');
+  return json.data;
+}
+
+// =================== ANALISIS ===================
+function analizar(item){
+  const d = item.d;
+  const idx = TV_COLS;
+  const simbolo = item.s.replace('BCBA:','');
+  const nombre = d[idx.indexOf('description')] || simbolo;
+  const close = d[idx.indexOf('close')];
+  const tipoTV = d[idx.indexOf('type')] || '';
+  const subtipo = d[idx.indexOf('subtype')] || '';
+  let tipo = 'Otro';
+  if(tipoTV === 'stock' && subtipo === 'common') tipo = 'Accion';
+  else if(tipoTV === 'dr') tipo = 'Cedear';
+  if(close == null || close <= 0) return null;
+
+  const raw = {
+    rsi: d[idx.indexOf('RSI')],
+    macd: d[idx.indexOf('MACD.macd')],
+    macdS: d[idx.indexOf('MACD.signal')],
+    sma20: d[idx.indexOf('SMA20')],
+    sma50: d[idx.indexOf('SMA50')],
+    bbL: d[idx.indexOf('BB.lower')],
+    bbU: d[idx.indexOf('BB.upper')],
+    atr: d[idx.indexOf('ATR')],
+    tvRec: d[idx.indexOf('Recommend.All')],
+    volume: d[idx.indexOf('volume')]
+  };
+  const change = d[idx.indexOf('change')] || 0;
+
+  const calc = calcularScore(raw, close, plazo);
+  return {simbolo, nombre, precio: close, tipo, change, raw, volume: raw.volume, score: calc.score, signals: calc.signals, hold: calc.hold};
+}
+
+function calcularScore(raw, close, perfil){
+  const p = PERFILES[perfil];
+  let score = p.base;
+  const signals = [];
+  const add = (label,bull,w,detail) => { signals.push({label,bull,w,detail}); score += bull ? w : -w; };
+
+  if(raw.rsi != null){
+    if(raw.rsi < p.rsi.bajo) add('RSI',1,p.rsi.w,'RSI '+raw.rsi.toFixed(1)+' (sobrevendido)');
+    else if(raw.rsi > p.rsi.alto) add('RSI',0,p.rsi.w,'RSI '+raw.rsi.toFixed(1)+' (sobrecomprado)');
+    else if(raw.rsi <= 50) add('RSI',1,p.rsi.w*0.5,'RSI '+raw.rsi.toFixed(1)+' (zona baja)');
+    else add('RSI',0,p.rsi.w*0.5,'RSI '+raw.rsi.toFixed(1)+' (zona alta)');
+  }
+  if(raw.macd != null && raw.macdS != null){
+    if(raw.macd > raw.macdS) add('MACD',1,p.macd,'MACD > senal');
+    else add('MACD',0,p.macd,'MACD < senal');
+  }
+  if(raw.sma20 != null && raw.sma50 != null){
+    if(raw.sma20 > raw.sma50) add('SMA20/50',1,p.sma,'SMA20 > SMA50');
+    else add('SMA20/50',0,p.sma,'SMA20 < SMA50');
+  }
+  if(raw.sma20 != null) add('P>MA20', close > raw.sma20, p.pMA20, close > raw.sma20 ? 'Sobre MA20' : 'Bajo MA20');
+  if(raw.sma50 != null) add('P>MA50', close > raw.sma50, p.pMA50, close > raw.sma50 ? 'Sobre MA50' : 'Bajo MA50');
+  if(raw.bbL != null && raw.bbU != null){
+    if(close <= raw.bbL * 1.02) add('BB',1,p.bb,'Banda inferior');
+    else if(close >= raw.bbU * 0.98) add('BB',0,p.bb,'Banda superior');
+  }
+  if(raw.atr != null){ const ap = (raw.atr/close)*100; add('ATR%', ap < 3, p.atr, ap < 3 ? 'Estable' : 'Volatil'); }
+  if(raw.tvRec != null){
+    if(raw.tvRec > 0.3) add('TV',1,p.tv,'TV recomienda ('+raw.tvRec.toFixed(2)+')');
+    else if(raw.tvRec < -0.3) add('TV',0,p.tv,'TV NO recomienda ('+raw.tvRec.toFixed(2)+')');
+  }
+  if(raw.volume != null && raw.volume > 0){
+    const volOk = raw.volume > 50000;
+    add('VOL', volOk, 3, volOk ? 'Volumen '+(raw.volume/1e6).toFixed(1)+'M' : 'Vol bajo');
+  }
+
+  const hold = calcularHold(signals, perfil);
+  return {score, signals, hold};
+}
+
+// =================== HOLD TIME ===================
+function calcularHold(signals, perfil){
+  const bull = signals.filter(s => s.bull);
+  const rsiOvers = bull.some(s => s.label==='RSI' && s.detail.includes('sobrevendido'));
+  const rsiOverb = signals.some(s => s.label==='RSI' && s.detail.includes('sobrecomprado'));
+  const macdBull = bull.some(s => s.label==='MACD');
+  const smaBull = bull.some(s => s.label==='SMA20/50');
+  const bbBull = bull.some(s => s.label==='BB');
+  const strongCount = bull.filter(s => s.w >= 8).length;
+  const predominan = bull.length > signals.length/2;
+
+  if(perfil === 'short'){
+    if(rsiOvers && macdBull) return {tiempo:'1-3 semanas', razon:'Rebote + impulso corto plazo'};
+    if(rsiOvers) return {tiempo:'1-2 semanas', razon:'Rebote desde sobreventa'};
+    if(bbBull) return {tiempo:'1-2 semanas', razon:'Rebote desde BB'};
+    if(macdBull) return {tiempo:'2-4 semanas', razon:'Cruce MACD alcista'};
+    if(predominan) return {tiempo:'1-3 semanas', razon:'Señales alcistas corto plazo'};
+    return {tiempo:'1-2 semanas', razon:'Operacion tactica'};
+  }
+  if(perfil === 'long'){
+    if(smaBull && macdBull && rsiOvers) return {tiempo:'6-12 meses', razon:'Tendencia fuerte multi-timeframe'};
+    if(smaBull && macdBull) return {tiempo:'6-9 meses', razon:'Tendencia alcista consolidada'};
+    if(smaBull) return {tiempo:'3-6 meses', razon:'Tendencia primaria alcista'};
+    if(macdBull) return {tiempo:'3-6 meses', razon:'Impulso de mediano-largo plazo'};
+    if(predominan) return {tiempo:'3-6 meses', razon:'Señales positivas de largo plazo'};
+    return {tiempo:'6 meses+', razon:'Inversion / cartera'};
+  }
+  // medium
+  if(smaBull && macdBull && rsiOvers) return {tiempo:'3-6 meses', razon:'Tendencia fuerte en multiples timeframes'};
+  if(smaBull && macdBull) return {tiempo:'2-3 meses', razon:'Tendencia primaria y secundaria alcistas'};
+  if(macdBull && rsiOvers) return {tiempo:'1-2 meses', razon:'Impulso alcista con RSI favorable'};
+  if(rsiOvers) return {tiempo:'2-6 semanas', razon:'Rebote desde sobreventa'};
+  if(rsiOverb && !bull.length) return {tiempo:'1-3 semanas', razon:'Riesgo de correccion (sobrecompra)'};
+  if(bbBull) return {tiempo:'2-4 semanas', razon:'Rebote desde banda de Bollinger'};
+  if(strongCount >= 3) return {tiempo:'2-3 meses', razon:'Multiples señales fuertes alcistas'};
+  if(predominan) return {tiempo:'1-3 meses', razon:'Señales alcistas predominan'};
+  return {tiempo:'1-2 meses', razon:'Cartera general / seguimiento'};
+}
+
+// =================== RECALCULAR ===================
+function recalcularTodo(){
+  for(const r of resultadosFull){
+    const calc = calcularScore(r.raw, r.precio, plazo);
+    r.score = calc.score;
+    r.signals = calc.signals;
+    r.hold = calc.hold;
+  }
+}
+
+// =================== SCAN ===================
+async function startScan(){
+  const btn=document.getElementById('btnScan'),status=document.getElementById('statusText');
+  const tbody=document.getElementById('tableBody'),statsRow=document.getElementById('statsRow');
+  btn.disabled=true;status.textContent='Escaneando 978 tickers...';statsRow.style.display='none';
+  document.getElementById('pagination').style.display='none';
+  document.getElementById('totalInfo').textContent='';
+  tbody.innerHTML='<tr><td colspan="11"><div class="loading"><div class="spinner"></div><div id="loadingText">Consultando TradingView...</div></div></td></tr>';
+
+  const inclAcc=document.getElementById('chkAcciones').checked,inclCed=document.getElementById('chkCedears').checked;
+  const lt=document.getElementById('loadingText');
+
+  lt.textContent='Solicitando datos a TradingView (978 tickers)...';
+  let data;
+  try { data = await fetchTVAll(); } catch(e){
+    tbody.innerHTML='<tr><td colspan="11"><div class="empty-state"><div class="big-icon">⚠️</div><p>Error al conectar con TradingView</p><p style="font-size:12px;color:#5a7a9a;">Asegurate de abrir via servidor local</p></div></td></tr>';
+    btn.disabled=0;status.textContent='Error';return;
+  }
+
+  lt.textContent='Analizando '+data.length+' instrumentos...';
+  resultadosFull = [];
+  let totalOk = 0;
+
+  for(const item of data){
+    const r = analizar(item);
+    if(!r) continue;
+    totalOk++;
+    resultadosFull.push(r);
+  }
+
+  resultados = resultadosFull.filter(r => {
+    if(!inclAcc && r.tipo === 'Accion') return false;
+    if(!inclCed && r.tipo === 'Cedear') return false;
+    if(r.tipo === 'Otro') return false;
+    return true;
+  });
+
+  resultados.sort((a,b)=>b.score-a.score);
+  resultadosFiltrados = [...resultados];
+  pagActual = 1;
+  aplicarModo();
+
+  document.getElementById('statTotal').textContent = data.length;
+  document.getElementById('statAnalizados').textContent = totalOk;
+  document.getElementById('statSugerencias').textContent = resultadosFiltrados.length;
+  const avg = resultadosFiltrados.length ? resultadosFiltrados.reduce((a,r)=>a+r.score,0)/resultadosFiltrados.length : 0;
+  document.getElementById('statScoreProm').textContent = avg ? avg.toFixed(1) : '-';
+  statsRow.style.display = 'grid';
+  document.getElementById('totalInfo').textContent = 'Total: '+totalOk+' activos con precio | Pasan filtro: '+resultadosFiltrados.length;
+
+  btn.disabled=0;
+  status.textContent = 'OK: '+totalOk+' analizados, '+resultadosFiltrados.length+' sugerencias (plazo '+plazo+')';
+}
+
+// =================== PLAZO ===================
+function setPlazo(p){
+  plazo = p;
+  document.querySelectorAll('#plazoShort,#plazoMedium,#plazoLong').forEach(b=>b.classList.remove('active'));
+  document.getElementById('plazo'+p.charAt(0).toUpperCase()+p.slice(1)).classList.add('active');
+  if(!resultadosFull.length) return;
+  recalcularTodo();
+  aplicarFiltros();
+}
+
+// =================== MODO ===================
+function setModo(m){
+  modo = m;
+  document.querySelectorAll('.modo-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('modo'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
+  aplicarModo();
+}
+
+function aplicarFiltros(){
+  if(!resultadosFull.length) return;
+  const inclAcc=document.getElementById('chkAcciones').checked;
+  const inclCed=document.getElementById('chkCedears').checked;
+  resultados = [...resultadosFull].filter(r => {
+    if(!inclAcc && r.tipo === 'Accion') return false;
+    if(!inclCed && r.tipo === 'Cedear') return false;
+    if(r.tipo === 'Otro') return false;
+    return true;
+  });
+  resultados.sort((a,b)=>b.score-a.score);
+  aplicarModo();
+}
+
+function aplicarModo(){
+  if(!resultados.length) return;
+  const minScore = parseInt(document.getElementById('selMinScore').value);
+  if(modo === 'compra'){
+    resultadosFiltrados = resultados.filter(r => r.score >= minScore);
+    resultadosFiltrados.sort((a,b)=>b.score-a.score);
+  } else if(modo === 'venta'){
+    resultadosFiltrados = resultados.filter(r => r.score < 50 || r.signals.filter(s=>!s.bull).length > r.signals.filter(s=>s.bull).length);
+    resultadosFiltrados.sort((a,b)=>a.score-b.score);
+  } else {
+    resultadosFiltrados = [...resultados];
+    resultadosFiltrados.sort((a,b)=>b.score-a.score);
+  }
+  pagActual = 1;
+  renderPaginado();
+  document.getElementById('statSugerencias').textContent = resultadosFiltrados.length;
+  const avg = resultadosFiltrados.length ? resultadosFiltrados.reduce((a,r)=>a+r.score,0)/resultadosFiltrados.length : 0;
+  document.getElementById('statScoreProm').textContent = avg ? avg.toFixed(1) : '-';
+  document.getElementById('totalInfo').textContent = 'Total: '+resultados.length+' analizados | Modo '+modo+' | Plazo '+plazo+': '+resultadosFiltrados.length+' resultados';
+  document.getElementById('statusText').textContent = 'OK — '+resultadosFiltrados.length+' resultados (modo '+modo+', plazo '+plazo+')';
+}
+
+// =================== PAGINACION ===================
+function renderPaginado(){
+  const total = resultadosFiltrados.length;
+  const paginas = Math.ceil(total / PAGE_SIZE) || 1;
+  if(pagActual > paginas) pagActual = paginas;
+  const inicio = (pagActual - 1) * PAGE_SIZE;
+  const fin = Math.min(inicio + PAGE_SIZE, total);
+  const pagina = resultadosFiltrados.slice(inicio, fin);
+  renderTable(pagina, inicio);
+  actualizarPaginacion(paginas, total);
+}
+
+function renderTable(results, offset){
+  const tbody=document.getElementById('tableBody');
+  const N=11;
+  if(!results.length){
+    tbody.innerHTML='<tr><td colspan="'+N+'"><div class="empty-state"><div class="big-icon">🔍</div><p>Sin resultados en este modo</p></div></td></tr>';
+    document.getElementById('pagination').style.display='none';
+    return;
+  }
+  document.getElementById('pagination').style.display='flex';
+  tbody.innerHTML=results.map((r,i)=>{
+    const num = (offset||0)+i+1;
+    const sc=r.score>=65?'high':r.score>=50?'med':'low',rc=r.score>=65?'buy':r.score>=50?'watch':'pass',rt=r.score>=65?'Comprar':r.score>=50?'Observar':'Pasar';
+    const bull=r.signals.filter(s=>s.bull).length,bear=r.signals.filter(s=>!s.bull).length;
+    const tc=bull>bear?'price-up':'price-down',tt=bull>bear?'Alcista':bull<bear?'Bajista':'Neutral';
+    const topSig=[...r.signals].sort((a,b)=>b.w-a.w).slice(0,4);
+    let pStr=r.precio<1?'$'+r.precio.toFixed(4):r.precio<10?'$'+r.precio.toFixed(3):r.precio<100?'$'+r.precio.toFixed(2):'$'+Math.round(r.precio).toLocaleString('es-AR');
+    const varStr = r.change ? (r.change>0?'+':'')+r.change.toFixed(1)+'%' : '';
+    const tvLink = 'https://www.tradingview.com/symbols/BCBA-'+r.simbolo+'/';
+    const sigHtml = topSig.map(s=>'<span class="signal-chip '+(s.bull?'bull':'bear')+'">'+s.label+(s.bull?' ▲':' ▼')+'</span>').join(' ');
+    const volStr = r.volume > 0 ? (r.volume >= 1e6 ? (r.volume/1e6).toFixed(1)+'M' : (r.volume/1e3).toFixed(0)+'K') : '-';
+    return '<tr>'
+    +'<td>'+num+'</td>'
+    +'<td><strong>'+r.simbolo+'</strong></td>'
+    +'<td><a href="'+tvLink+'" target="_blank" class="btn-chart" title="Abrir en TradingView">📈</a></td>'
+    +'<td style="font-size:11px;color:#a0b0c0;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.nombre+'</td>'
+    +'<td>'+pStr+' <span class="'+(r.change>=0?'price-up':'price-down')+'" style="font-size:11px;">'+varStr+'</span></td>'
+    +'<td style="font-size:11px;color:#7b8ba3;text-align:right;">'+volStr+'</td>'
+    +'<td><div class="score-bar"><span style="font-weight:700;font-size:15px;min-width:28px;">'+r.score.toFixed(0)+'</span><div class="score-fill '+sc+'" style="width:'+Math.min(r.score*1.2,100)+'px;"></div><span class="tag '+rc+'">'+rt+'</span></div></td>'
+    +'<td class="'+tc+'" style="font-weight:600;font-size:13px;">'+tt+'</td>'
+    +'<td>'+sigHtml+'</td>'
+    +'<td style="font-size:11px;color:#7b8ba3;">'+r.tipo+'</td>'
+    +'<td><button class="btn-detail" onclick="mostrarDetalle('+i+')" title="Ver detalle">ℹ️</button></td>'
+    +'</tr>';
+  }).join('');
+}
+
+function actualizarPaginacion(paginas, total){
+  document.getElementById('pageInfo').textContent = 'Pagina '+pagActual+' de '+paginas+' ('+total+' resultados)';
+  const btnPrev = document.getElementById('pagePrev');
+  const btnNext = document.getElementById('pageNext');
+  btnPrev.style.display = 'inline-block';
+  btnNext.style.display = 'inline-block';
+  btnPrev.disabled = pagActual <= 1;
+  const numContainer = document.getElementById('pageNumbers');
+  numContainer.innerHTML = '';
+  const maxVisibles = 7;
+  let desde = Math.max(1, pagActual - Math.floor(maxVisibles/2));
+  let hasta = Math.min(paginas, desde + maxVisibles - 1);
+  if(hasta - desde + 1 < maxVisibles) desde = Math.max(1, hasta - maxVisibles + 1);
+  for(let p = desde; p <= hasta; p++){
+    const b = document.createElement('button');
+    b.className = 'btn btn-sm' + (p === pagActual ? ' btn-primary' : '');
+    b.textContent = p;
+    b.onclick = () => irPagina(p);
+    numContainer.appendChild(b);
+  }
+}
+
+function irPagina(p){
+  const total = resultadosFiltrados.length;
+  const paginas = Math.ceil(total / PAGE_SIZE) || 1;
+  if(p < 1 || p > paginas) return;
+  pagActual = p;
+  renderPaginado();
+}
+
+// =================== SORT ===================
+function ordenar(field){
+  if(sortField===field)sortDir*=-1;else{sortField=field;sortDir=field==='rank'||field==='score'?-1:1}
+  resultadosFiltrados.sort((a,b)=>{let va=a[field]??'',vb=b[field]??'';if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return va<vb?-sortDir:va>vb?sortDir:0});
+  pagActual = 1;
+  renderPaginado();
+}
+
+// =================== MODAL DETALLE ===================
+function mostrarDetalle(idx){
+  const pagina = resultadosFiltrados.slice((pagActual-1)*PAGE_SIZE, pagActual*PAGE_SIZE);
+  const r = pagina[idx];
+  if(!r) return;
+
+  document.getElementById('modalTitle').textContent = r.simbolo+' — '+r.nombre;
+  document.getElementById('modalSub').textContent = r.tipo+' | $'+r.precio.toFixed(2)+(r.change?' ('+(r.change>0?'+':'')+r.change.toFixed(1)+'%)':'')
+    +' | Vol: '+(r.volume>0?(r.volume>=1e6?(r.volume/1e6).toFixed(1)+'M':(r.volume/1e3).toFixed(0)+'K'):'-')+' | Plazo: '+plazo;
+
+  const sorted = [...r.signals].sort((a,b)=>Math.abs(b.w)-Math.abs(a.w));
+  document.getElementById('modalSignals').innerHTML = sorted.map(s => {
+    const cls = s.bull ? 'bull' : 'bear';
+    const sign = s.bull ? '+' : '-';
+    return '<div class="signal-row">'
+      +'<span class="s-label">'+s.detail+'</span>'
+      +'<span class="s-val '+cls+'">'+sign+s.w+' pts</span>'
+      +'</div>';
+  }).join('');
+
+  const bullCnt = r.signals.filter(s=>s.bull).length;
+  const bearCnt = r.signals.length - bullCnt;
+  const hold = r.hold;
+
+  let veredicto = '';
+  if(r.score >= 65) veredicto = '✅ <strong>COMPRA</strong> — ';
+  else if(r.score >= 50) veredicto = '👀 <strong>OBSERVAR</strong> — ';
+  else veredicto = '⚠️ <strong>PASAR</strong> — ';
+
+  veredicto += 'Score <strong>'+r.score.toFixed(0)+'/100</strong> — '
+    + bullCnt+' alcistas vs '+bearCnt+' bajistas. '
+    +'<span class="hold">⏱ Tiempo sugerido: <strong>'+hold.tiempo+'</strong> — '+hold.razon+'</span>';
+
+  document.getElementById('modalVeredicto').innerHTML = veredicto;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function cerrarModal(){
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+</script>
+</body>
+</html>
