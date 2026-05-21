@@ -115,7 +115,6 @@ header .container{flex-direction:column;align-items:flex-start}
     <div class="checkbox-group">
       <label><input type="checkbox" id="chkAcciones" checked onchange="aplicarFiltros()"> Acciones (stock)</label>
       <label><input type="checkbox" id="chkCedears" checked onchange="aplicarFiltros()"> Cedears (DR)</label>
-      <label><input type="checkbox" id="chkBonos" onchange="aplicarFiltros()"> Bonos y ON</label>
     </div>
     <div class="filter-group">
       <label>Score min</label>
@@ -202,7 +201,6 @@ header .container{flex-direction:column;align-items:flex-start}
 
 <script>
 const TV_COLS = ['name','close','type','subtype','description','RSI','MACD.macd','MACD.signal','SMA20','SMA50','BB.lower','BB.upper','ATR','Recommend.All','volume','change'];
-const TV_COLS_BOND = ['name','close','description','RSI','MACD.macd','MACD.signal','SMA20','SMA50','BB.lower','BB.upper','ATR','Recommend.All','volume','change','yield'];
 
 const PERFILES = {
   short:{base:50,rsi:{w:12,bajo:35,alto:65},macd:12,pMA20:8,pMA50:2,sma:5,bb:10,atr:8,tv:3},
@@ -236,21 +234,6 @@ async function fetchTVAll(){
   return json.data;
 }
 
-async function fetchBonds(){
-  const resp = await fetch('https://scanner.tradingview.com/bond/scan', {
-    method: 'POST',
-    headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify({
-      symbols: {query: {types: []}, tickers: []},
-      columns: TV_COLS_BOND
-    })
-  });
-  if(!resp.ok) throw new Error('HTTP '+resp.status);
-  const json = await resp.json();
-  if(!json.data) throw new Error('Sin datos');
-  return json.data;
-}
-
 // =================== ANALISIS ===================
 function analizar(item){
   const d = item.d;
@@ -263,7 +246,6 @@ function analizar(item){
   let tipo = 'Otro';
   if(tipoTV === 'stock' && subtipo === 'common') tipo = 'Accion';
   else if(tipoTV === 'dr') tipo = 'Cedear';
-  else if(tipoTV === 'bond') tipo = 'Bono';
   if(close == null || close <= 0) return null;
 
   const raw = {
@@ -282,32 +264,6 @@ function analizar(item){
 
   const calc = calcularScore(raw, close, plazo);
   return {simbolo, nombre, precio: close, tipo, change, raw, volume: raw.volume, score: calc.score, signals: calc.signals, hold: calc.hold};
-}
-
-function analizarBond(item){
-  const d = item.d;
-  const idx = TV_COLS_BOND;
-  const simbolo = item.s.replace(/^[^:]+:/,'');
-  const nombre = d[idx.indexOf('description')] || simbolo;
-  const close = d[idx.indexOf('close')];
-  if(close == null || close <= 0) return null;
-  const tipo = 'Bono';
-  const change = d[idx.indexOf('change')] || 0;
-  const raw = {
-    rsi: d[idx.indexOf('RSI')],
-    macd: d[idx.indexOf('MACD.macd')],
-    macdS: d[idx.indexOf('MACD.signal')],
-    sma20: d[idx.indexOf('SMA20')],
-    sma50: d[idx.indexOf('SMA50')],
-    bbL: d[idx.indexOf('BB.lower')],
-    bbU: d[idx.indexOf('BB.upper')],
-    atr: d[idx.indexOf('ATR')],
-    tvRec: d[idx.indexOf('Recommend.All')],
-    volume: d[idx.indexOf('volume')],
-    yield: d[idx.indexOf('yield')]
-  };
-  const calc = calcularScore(raw, close, plazo);
-  return {simbolo, nombre, precio: close, tipo, change, raw, volume: raw.volume, yield: raw.yield, score: calc.score, signals: calc.signals, hold: calc.hold};
 }
 
 function calcularScore(raw, close, perfil){
@@ -403,54 +359,30 @@ function recalcularTodo(){
 async function startScan(){
   const btn=document.getElementById('btnScan'),status=document.getElementById('statusText');
   const tbody=document.getElementById('tableBody'),statsRow=document.getElementById('statsRow');
-  btn.disabled=true;status.textContent='Escaneando...';statsRow.style.display='none';
+  btn.disabled=true;status.textContent='Escaneando 978 tickers...';statsRow.style.display='none';
   document.getElementById('pagination').style.display='none';
   document.getElementById('totalInfo').textContent='';
   tbody.innerHTML='<tr><td colspan="11"><div class="loading"><div class="spinner"></div><div id="loadingText">Consultando TradingView...</div></div></td></tr>';
 
   const inclAcc=document.getElementById('chkAcciones').checked,inclCed=document.getElementById('chkCedears').checked;
-  const inclBonos=document.getElementById('chkBonos').checked;
   const lt=document.getElementById('loadingText');
 
-  resultadosFull = [];
-  let totalOk = 0;
-  let fuentes = [];
-
-  // 1) Argentina scanner (stocks, cedears, bonds from BCBA)
-  lt.textContent='Solicitando BCBA (978 tickers)...';
-  try {
-    const data = await fetchTVAll();
-    lt.textContent='Analizando BCBA ('+data.length+' instrumentos)...';
-    for(const item of data){
-      const r = analizar(item);
-      if(!r) continue;
-      totalOk++;
-      resultadosFull.push(r);
-    }
-    fuentes.push('BCBA ('+data.length+' tickers)');
-  } catch(e){
-    console.warn('BCBA scan fallo:', e);
+  lt.textContent='Solicitando datos a TradingView (978 tickers)...';
+  let data;
+  try { data = await fetchTVAll(); } catch(e){
+    tbody.innerHTML='<tr><td colspan="11"><div class="empty-state"><div class="big-icon">⚠️</div><p>Error al conectar con TradingView</p><p style="font-size:12px;color:#5a7a9a;">Asegurate de abrir via servidor local</p></div></td></tr>';
+    btn.disabled=0;status.textContent='Error';return;
   }
 
-  // 2) Bond scanner (if checked)
-  if(inclBonos){
-    lt.textContent='Solicitando bonos (bond/scan)...';
-    try {
-      const bondData = await fetchBonds();
-      lt.textContent='Analizando '+bondData.length+' bonos...';
-      const seen = new Set(resultadosFull.map(r=>r.simbolo));
-      for(const item of bondData){
-        const r = analizarBond(item);
-        if(!r) continue;
-        if(seen.has(r.simbolo)) continue;
-        seen.add(r.simbolo);
-        totalOk++;
-        resultadosFull.push(r);
-      }
-      fuentes.push('Bonds ('+bondData.length+' tickers)');
-    } catch(e){
-      console.warn('Bond scan fallo:', e);
-    }
+  lt.textContent='Analizando '+data.length+' instrumentos...';
+  resultadosFull = [];
+  let totalOk = 0;
+
+  for(const item of data){
+    const r = analizar(item);
+    if(!r) continue;
+    totalOk++;
+    resultadosFull.push(r);
   }
 
   resultados = resultadosFull.filter(r => {
@@ -465,26 +397,16 @@ async function startScan(){
   pagActual = 1;
   aplicarModo();
 
-  document.getElementById('statTotal').textContent = resultadosFull.length;
+  document.getElementById('statTotal').textContent = data.length;
   document.getElementById('statAnalizados').textContent = totalOk;
   document.getElementById('statSugerencias').textContent = resultadosFiltrados.length;
   const avg = resultadosFiltrados.length ? resultadosFiltrados.reduce((a,r)=>a+r.score,0)/resultadosFiltrados.length : 0;
   document.getElementById('statScoreProm').textContent = avg ? avg.toFixed(1) : '-';
   statsRow.style.display = 'grid';
-  document.getElementById('totalInfo').textContent = 'Total: '+totalOk+' activos con precio (BCBA'+(inclBonos?' + Bonds':'')+') | Pasan filtro: '+resultadosFiltrados.length;
+  document.getElementById('totalInfo').textContent = 'Total: '+totalOk+' activos con precio | Pasan filtro: '+resultadosFiltrados.length;
 
   btn.disabled=0;
   status.textContent = 'OK: '+totalOk+' analizados, '+resultadosFiltrados.length+' sugerencias (plazo '+plazo+')';
-}
-
-// =================== PLAZO ===================
-function setPlazo(p){
-  plazo = p;
-  document.querySelectorAll('#plazoShort,#plazoMedium,#plazoLong').forEach(b=>b.classList.remove('active'));
-  document.getElementById('plazo'+p.charAt(0).toUpperCase()+p.slice(1)).classList.add('active');
-  if(!resultadosFull.length) return;
-  recalcularTodo();
-  aplicarFiltros();
 }
 
 // =================== PLAZO ===================
@@ -509,11 +431,9 @@ function aplicarFiltros(){
   if(!resultadosFull.length) return;
   const inclAcc=document.getElementById('chkAcciones').checked;
   const inclCed=document.getElementById('chkCedears').checked;
-  const inclBonos=document.getElementById('chkBonos').checked;
   resultados = [...resultadosFull].filter(r => {
     if(!inclAcc && r.tipo === 'Accion') return false;
     if(!inclCed && r.tipo === 'Cedear') return false;
-    if(!inclBonos && r.tipo === 'Bono') return false;
     if(r.tipo === 'Otro') return false;
     return true;
   });
@@ -637,9 +557,7 @@ function mostrarDetalle(idx){
 
   document.getElementById('modalTitle').textContent = r.simbolo+' — '+r.nombre;
   document.getElementById('modalSub').textContent = r.tipo+' | $'+r.precio.toFixed(2)+(r.change?' ('+(r.change>0?'+':'')+r.change.toFixed(1)+'%)':'')
-    +' | Vol: '+(r.volume>0?(r.volume>=1e6?(r.volume/1e6).toFixed(1)+'M':(r.volume/1e3).toFixed(0)+'K'):'-')
-    +(r.yield != null?' | Yield: '+r.yield.toFixed(2)+'%':'')
-    +' | Plazo: '+plazo;
+    +' | Vol: '+(r.volume>0?(r.volume>=1e6?(r.volume/1e6).toFixed(1)+'M':(r.volume/1e3).toFixed(0)+'K'):'-')+' | Plazo: '+plazo;
 
   const sorted = [...r.signals].sort((a,b)=>Math.abs(b.w)-Math.abs(a.w));
   document.getElementById('modalSignals').innerHTML = sorted.map(s => {
